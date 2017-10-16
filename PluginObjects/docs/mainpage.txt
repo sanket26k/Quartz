@@ -1,0 +1,298 @@
+/** \mainpage MicroSynth
+ *
+ * MicroSynth is a powerful polyphonic analog-modelling synth. The voice and engine architectures are shown here (NOTE: not all GUI controls are shown):
+ <br>
+ <br>
+ <br>
+  \image html usynth_voice.png
+  <br>
+  <br>
+  <br>
+  \image html usynth_engine.png
+  <br>
+  <br>
+ * Modulation:
+ * - \subpage modSourcesDests "Mod Sources and Destinations"
+
+ * There are several steps to adding new components, moduation routings, and modulator objects:
+ * - \subpage addingComponents "Adding new components"
+ *
+ * - \subpage addingModRoutings "Adding/removing modulation routings"
+ *
+ * - \subpage addingFixedModRoutings "Adding Fixed Permanent Modulation Routings"
+ *
+ * - \subpage modulators "Creating and using Modulator Objects"
+ *
+ */ 
+/** \page modSourcesDests Sources and Destinations
+MicroSynth 2.0 has the following modulation sources and destinations; these are enumerated at the top of the SynthVoice.h file in enum class modulationSource and enum class modulationDestination
+<br>
+<br>
+<b>ModulationSources:</b>
+- NoneDontCare
+- LFO1 Out
+- LFO1 Out Inverted
+- LFO2 Out 
+- LFO2 Out Inverted
+- EG1 Out
+- EG1 Biased Out
+- EG2 Out
+- EG2 Biased Out
+- Osc1 Out
+- Osc2 Out
+- SubOsc Out
+<br>
+
+<b>ModulationDestinations:</b>
+- NoneDontCare  
+- Osc1 Pitch  
+- Osc2 Pitch  
+- All Osc Pitch  
+- Osc1 PW 
+- Osc2 PW  
+- SubOsc PW  
+- All Osc PW  
+- Filter1 fc  
+- Filter1 Q  
+- DCA1 Amp  
+- DCA1 Pan  
+- Delay FX Mix  
+- Delay FX FB  
+- Chorus FX Depth  
+*/
+
+/** \page addingComponents Adding new components
+Here is a step-by-step guide to adding s sub-oscillator to the synth project. 
+
+SynthVoice.h
+ 
+1. add new object member pointer to .h file
+ 
+2. add shared pointer to voice modifiers
+ 
+SynthVoice.cpp
+ 
+HINT - now go through the voice .cpp file one function at a time, and replicate what you see for other components:
+ 
+1. create the new object with the new modifiers for it
+ 
+2. initialize the new component in SynthVoice::initializeComponent()
+ 
+3. stop the component in SynthVoice::stopComponent()
+ 
+4. reset the component in SynthVoice::resetComponent()
+ 
+5. add to validation function
+ 
+6. add to SynthVoice::renderComponent() and render it. NOTE: because it is an oscillator, need to add any audio engine code, so mix with other oscillators, still in SynthVoice::renderComponent()
+ 
+7. set octave = -1, then call doNoteOn() in SynthVoice::doNoteOn()
+ 
+8. add to SynthVoice::doNoteOff()
+ 
+9. if oscillator, setUnisonDetuneIntensity() in SynthVoice::setUnisonDetuneIntensity() BUT we are not going to detune the sub oscillator so we won't do it
+
+10. FOR PITCHED OSCILLATORS ONLY: make sure to add code to use the glideLFO() (portamento modulator) in the SynthVoice::doNoteOn() method:<br>
+<b>subOsc->getModifiers()->modulationControls[kSynthOscPortamentoMod].modulationRange = glideRange;</b><br>
+and add the fixed modulation routing in <b>SynthVoice::setFixedModulationRoutings()<\b>
+<b>addModulationRouting(glideLFO, kLFOUnipolarDownRamp, subOsc, kSynthOscPortamentoMod);</b><br>
+
+11. add controls to the GUI via the luginCore::updateEngine(), here we just have one volume control for the sub-oscillator; then wire in the rest of the controls/modifiers; see below on what we are sharing from Osc 1:
+ 
+The sub-oscillator uses:
+- same waveshape
+- same pulse width
+- master tuning stuff
+- NOT osc frequency ratio (would confuse user/listener?)
+as oscillator 1, it only has a volume control
+
+<b>voiceModifiers->subOscModifiers->oscWave = convertEnum(osc1Wave, synthOscWaveform);</b><br>
+<b>voiceModifiers->subOscModifiers->pulseWidthControl_Pct = osc1PulseWidthControl_Pct;</b><br>
+<b>voiceModifiers->subOscModifiers->masterTuningRatio = masterTuningRatio;</b><br>
+<b>voiceModifiers->subOscModifiers->masterTuningOffset_cents = masterTuningOffset_cents;</b><br><br>
+ 
+the only control for the subOsc<br>
+<b>voiceModifiers->subOscModifiers->oscAmpControl_dB = subOscAmpControl_dB;</b><br>
+ 
+*/
+
+/** \page addingModRoutings Adding/removing modulation routings
+Adding and rempoving possible modulation routings is also fairly straightforward. As an example, we will add the sub-oscillator routings. Notice that components may be able to act as sources, destinations, or both sources and destinations. The sub-oscillator can act as both source and destination.
+
+- decide on appropriate routings; for the sub-osc, it can act as a <b>modulation source</b> (normal/left osc output) and as a <b>modulation destination</b> for pulse-width. Note that in this case we don't allow it to receive pitch modulation to firmly cement it as the sub-tonic note. 
+
+- add new entries into the modulation source and modulation destination enumerations at the top of the SynthVoice.h file:
+<br>
+enum class modulationSource { <br>
+	kNoneDontCare, <br>
+	kLFO1_Out, <br>
+	kLFO1_OutInv, <br>
+	...<br>
+	kOsc2_Out, <br>
+	kSubOsc_Out, <- NEWLY ADDED <br>
+	kNumModulationSources };<br><br>
+<br>
+enum class modulationDestination { <br>
+	kNoneDontCare, <br>
+	...<br>
+	kAll_Osc_Pitch, <br>
+	kOsc1_PW,<br>
+	kOsc2_PW, <br>
+	kSubOsc_PW, <- NEWLY ADDED <br>
+	kAll_Osc_PW, <br>
+	...<br> 
+	kNumModulationDestinations};<br><br>
+
+- register the component as a <b>modulation source</b> in the SynthVoice constructor using the registerModSourceComponent()
+<br>function arguments are: (modulationSource, ISynthComponent*, modulator source output array index)
+<br>
+\param modulationSource::kSubOsc_Out is the source enumeration
+\param subOsc is a pointer to the ISynthComponent object
+\param kLeftOscOutput is the output array index (slot): see the <component>.h file for these declarations<br>
+
+registerModSourceComponent(modulationSource::kSubOsc_Out, subOsc, kLeftOscOutput);<br>
+
+- register the component as a <b>modulation destination</b> in the SynthVoice constructor using the registerModDestinationComponent()method
+<br>function arguments are: (modulationSource, ISynthComponent*, modulator source output array index)
+<br>
+\param modulationDestination::kSubOsc_PW is the destination enumeration
+\param subOsc is a pointer to the ISynthComponent object<br>
+
+registerModDestinationComponent(modulationDestination::kSubOsc_PW, subOsc);<br>
+
+- register the <b>modulator array index</b> for the routing in the SynthVoice constructor using the registerModulatorArrayIndex() method; the modulator array indexes are found at the top of the <component>.h file
+<br>function arguments are: (modulationSource, modulationDestination, destination modulator array index)
+<br>
+\param modulationSource::kNoneDontCare this allows ALL modulation sources to be a source for this modulation destination
+\param modulationDestination::kSubOsc_PW is the Pulse Width modulation enumaration
+\param kSynthOscPulseWidthMod is the array index (slot) for the modulator<br>
+
+registerModulatorArrayIndex(modulationSource::kNoneDontCare, modulationDestination::kSubOsc_PW, kSynthOscPulseWidthMod);<br>
+
+<b>Add/modify the GUI controls accordingly; this consists of two parts (max)</b> 
+1. The first part is to modify the enumeration for each of the programmable modulation sources and destinations; for convenience, we use the same exact enumerations as the enum class modulationSource and enum class modulationDestination in the SynthVoice.h file <b>EXCEPT</b> we omit the "k" and we know that RackAFX will automatically replace the "_" with a blank space for easier reading.
+2. For the logic in the programmable mod matrix, we need to account for the blanket "All" destinations (e.g. All Osc Pitch or All Osc PW, etc...). This code is found near the end of the <b>PluginCore::updateEngine()</b> function:
+<br>
+	<b>else if (compareIntToEnum(modDest1, modulationDestination::kAll_Osc_PW)) </b><br>
+	{<br>
+		voiceModifiers->modulationRoutings[routingIndex].modSource = convertEnum(modSource1, modulationSource);<br>
+		voiceModifiers->modulationRoutings[routingIndex].modDest = modulationDestination::kOsc1_PW;<br>
+		voiceModifiers->progModulationControls[routingIndex].modulationIntensity = modRouting1_Intensity;<br>
+		routingIndex++;<br>
+
+		voiceModifiers->modulationRoutings[routingIndex].modSource = convertEnum(modSource1, modulationSource);<br>
+		voiceModifiers->modulationRoutings[routingIndex].modDest = modulationDestination::kOsc2_PW;<br>
+		voiceModifiers->progModulationControls[routingIndex].modulationIntensity = modRouting1_Intensity;<br>
+		routingIndex++;<br>
+
+		<b>voiceModifiers->modulationRoutings[routingIndex].modSource = convertEnum(modSource1, modulationSource);</b><br>
+		<b>voiceModifiers->modulationRoutings[routingIndex].modDest = modulationDestination::kSubOsc_PW;</b><br>
+		<b>voiceModifiers->progModulationControls[routingIndex].modulationIntensity = modRouting1_Intensity;</b><br>
+	}<br>
+
+
+
+*/
+
+/** \page addingFixedModRoutings Adding Permanent Modulation Routings
+You can add permanent modulation routings easily. Add the appropriate code to the SynthVoice::setFixedModulationRoutings() function. Use the SynthVoice::addModulationRouting() function for each permanent routing. See the routings that are already there as the example:<br>
+\param sourceComponent: a pointer to the ISynthComponent that acts as the modulation source
+\param outputArrayIndex: the index (slot) in the modulator source's output array
+\param destComponent: a pointer to the ISynthComponent that acts as the modulation destination
+\param modulatorIndex: the index (slot) in the modulator destination's modulator object array
+<br>
+
+Example:
+- outputEG: a pointer to the EG (source) object
+- kEGNormalOutput: the index in the EG's output array
+- outputDCA: a pointer to the DCA (destination) object
+- kDCA_AmpMod: the index of the DCA's modulator array for this routing
+<br>
+
+<b>addModulationRouting(outputEG, kEGNormalOutput, outputDCA, kDCA_AmpMod);</b><br>
+*/
+
+/** \page modulators Creating and using Modulator Objects
+The Modulator object is one of the most powerful components in the synth plugin. It handles all the chores associated with <b>a single modulation type</b>, for example <b>oscillator pulse width modulation</b> or <b>filter fc modulation</b> or <b>chorus depth modulation</b>. The conceptual diagram of a Modulator object is shown here:
+ <br>
+  \image html usynth_modulator.png
+ <br>
+ <br>
+<b>Atrributes:</b>
+- there are 64 modulation "channels" and you can increase this number by modifying MAX_MODULATOR_INPUT_CHANNELS in synthobjects.h
+- each modulation channel consists of a pointer to a modulation source output array slot and a pointer to a group of modulation controls for the channel; the controls consist of intensity, range and inversion and may or may not be offered to the user for adjustment
+- these modulation controls are declared and defined on each ISynthComponent's Modifier structure and each is a ModulatorControl structure. There is a ModulatorControl structure for each Modulator in the objects Modulator Array.
+- each ISynthComponent also has a function to get a specific ModulatorControl pointer for a given modulator; this is to allow easy integration with the programmable mod matrix GUI controls.
+- the Modulator iterates through all connected (enabled) channels and accumulates each modulation source contribution in its output value
+- the destination object picks up the modulated value by calling <b>modulators[index]->getModulatedValue()</b>
+ <br> 
+ <br>
+ 
+<b>Creating and using new Modulators: </b><br>
+Making and using new modulators is very easy and consists of 4 steps. As an example, we can see how the synthoscillator's pulse width modulator is defined:
+<br>
+- add definitions for the modulator's minimum, maximum and default range in the <component>.h file<br>
+const double kMinSynthOsc_PW = 0.05;<br>
+const double kMaxSynthOsc_PW = +0.95;<br>
+const double kSynthOsc_PW_ModRange = 0.5;// --> +/- 50%<br>
+<br>
+- add a modulator array index enumeration at the top of the <component>.h file<br>
+enum {  <br>
+	kSynthOscPitchMod, <br>
+	kSynthOscToOscPitchMod, <br>
+	..... <br>
+	<b>kSynthOscPulseWidthMod,</b> <- NEWLY ADDED <br>
+	..... <br>
+	kNumSynthOscModulators };<br>
+<br>
+- create the modulator in the object's constructor using the new operator:<br>
+
+<b>Modulator(double _defaultValue, double _defaultModRange, modTransform _transform,  bool _priorityModulator = false)</b>
+\param _defaultValue: the default value the modulator should create when it is NOT enabled; there are definitions for kDefaultOutputValueOFF (0.0) and kDefaultOutputValueON (1.0
+\param _defaultModRange: the default range for all channels; this will vary depending on the type of modulation being used
+\param _transform: a transform operation to perform on the source value prior to accumulation
+\param _priorityModulator: a flag to denote a priority modulator, which must run on each sample interval and cannot be granularized; notice that this defaults to false
+<br>
+
+<b>modulators[kSynthOscPulseWidthMod] = new Modulator(kDefaultOutputValueOFF, kSynthOsc_PW_ModRange, modTransform::kNoTransform);</b>
+
+<b>Mod Transforms: </b><br>
+There are currently three transforms declared in enum class modTransform { kNoTransform, kMaxDownTransform, kAlwaysPositiveTransform };
+<br>
+\param kNoTransform: no transform is applied
+\param kMaxDownTransform: apply max-down transform for max-down modulations; these start at 1.0 and modulate downwards
+\param kAlwaysPositiveTransform: offset the modulation value so that it is always positive; this usually happens with inverted unipolar modulators such as the outputEG -> outputDCA EG amp modulator
+<br>
+
+- add the modulator to the appropriate line of code in the component's update function and always make sure to bound the final modulated value with the min and max limits you setup previously.
+
+//// --- calculate pulse width<br>
+pulseWidth = (modifiers->pulseWidthControl_Pct / 100.0) + <b>modulators[kSynthOscPulseWidthMod]->getModulatedValue()</b>;<br><br>
+
+//// --- bound the pulse width to our range [-1, +1]<br>
+<b>boundValue(pulseWidth, kMinSynthOsc_PW, kMaxSynthOsc_PW);</b><br>
+
+<b>NOTE</b><br>
+For priority modulators you will also need to add some code to the renderComponent() object, after the modulators have been run. This all depends on the kind of modulation and will vary accordingly. Sometimes it will be a simple statement like phase modulation, or more complex as in frequency modulation. You can check the modulator's enable flag to see whether or not is is running to conserve CPU cycles.<br><br>
+
+In SynthOscillator::renderComponent() <br>
+
+<b>runModuators(update);</b><br>
+
+//// --- these are CRITICAL modulator values that must be updated each sample interval!<br>
+////<br>
+//// --- save Phase Mod value for use in oscillate functions (not worth it to test if enabled; benign if not<br>
+<b>phaseModuator = modulators[kSynthOscLinPhaseMod]->getModulatedValue();</b><br>
+
+//// --- apply linear FM (not used Yamaha DX, but is used in Oddysei and other primitive synths)<br>
+////     NOTE: check to see if enabled as it will require a phase inc update calculation<br>
+<b>if (modulators[kSynthOscLinFreqMod]->isEnabled())<br>
+{<br>
+	//// --- linear application of modulator<br>
+	oscFrequency += modulators[kSynthOscLinFreqMod]->getModulatedValue();
+
+	//// --- recalculate<br>
+	calculatePhaseInc();<br>
+}
+
+*/
