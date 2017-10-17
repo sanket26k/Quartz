@@ -16,7 +16,7 @@ const unsigned int kNumEGModulators = 0;
 
 // --- strongly typed enum for trivial oscillator type & mode
 enum class egTCMode { kAnalog, kDigital };
-enum class egState { kOff, kDelay, kAttack, kDecay, kSustain, kRelease, kShutdown };
+enum class egState { kOff, kDelay, kAttack, kDecay, kSustain, kRelease, kShutdown, kShutdownForRepeat };
 
 /**
 	\struct EGModifiers
@@ -46,6 +46,7 @@ struct EGModifiers
 	bool noteNumberToDecayScaling = false;
 
 	//--- ADSR times from user
+	double repeatTime_mSec = 1000.0;
 	double delayTime_mSec = 1000.0;
 	double attackTime_mSec = 1000.0;	// att: is a time duration
 	double decayTime_mSec = 1000.0;		// dcy: is a time to decay 1->0
@@ -132,8 +133,10 @@ protected:
 	void calculateDecayTime(double decayTime, double decayTimeScalar = 1.0);
 	void calculateReleaseTime(double releaseTime, double releaseTimeScalar = 1.0);
 	void calculateDelayTime(double delayTime);
-
+	void calculateRepeatTime(double repeatTime);
+	
 	// --- generate it
+	bool doRepeat();
 	bool doEnvelopeGenerator();
 
 	// --- function to set the time constants
@@ -162,6 +165,7 @@ protected:
 	bool outputEG = false;
 
 	//--- ADSR times from user
+	double repeatTime_mSec = 1000.0;
 	double delayTime_mSec = 1000.0;
 	double attackTime_mSec = 1000.0;	///< att: is a time duration
 	double decayTime_mSec = 1000.0;		///< dcy: is a time to decay from max output to 0.0
@@ -203,9 +207,11 @@ protected:
 
 	// --- RUN/STOP flag
 	bool noteOn = false;
+	bool repeatOn = true;
 
 	// --- Timer
 	Timer egTimer = Timer();
+	Timer reTimer = Timer();
 
 	// --- our modifiers
 	std::shared_ptr<EGModifiers> modifiers = nullptr;

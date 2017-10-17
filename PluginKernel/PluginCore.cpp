@@ -517,6 +517,20 @@ bool PluginCore::initPluginParameters()
 	piParam->setBoundVariable(&eg1DelayTime_mSec, boundVariableType::kDouble);
 	addPluginParameter(piParam);
 
+	// --- continuous control: EG1 Repeat
+	piParam = new PluginParameter(controlID::eg1RepeatTime_mSec, "EG1 Repeat", "mSec", controlVariableType::kDouble, 0.000000, 2000.000000, 0.000000, taper::kLinearTaper);
+	piParam->setParameterSmoothing(true);
+	piParam->setSmoothingTimeMsec(100.00);
+	piParam->setBoundVariable(&eg1RepeatTime_mSec, boundVariableType::kDouble);
+	addPluginParameter(piParam);
+
+	// --- continuous control: EG2 Repeat
+	piParam = new PluginParameter(controlID::eg2RepeatTime_mSec, "EG2 Repeat", "mSec", controlVariableType::kDouble, 0.000000, 2000.000000, 0.000000, taper::kLinearTaper);
+	piParam->setParameterSmoothing(true);
+	piParam->setSmoothingTimeMsec(100.00);
+	piParam->setBoundVariable(&eg2RepeatTime_mSec, boundVariableType::kDouble);
+	addPluginParameter(piParam);
+
 	// --- BONUS Parameters
 	// --- SCALE_GUI_SIZE
 	piParam = new PluginParameter(SCALE_GUI_SIZE, "Scale GUI", "tiny,small,medium,normal,large,giant", "normal");
@@ -924,6 +938,16 @@ bool PluginCore::initPluginParameters()
 	auxAttribute.setUintAttribute(6);
 	setParamAuxAttribute(controlID::eg1DelayTime_mSec, auxAttribute);
 
+	// --- controlID::eg1RepeatTime_mSec
+	auxAttribute.reset(auxGUIIdentifier::GUIKnobGraphic);
+	auxAttribute.setUintAttribute(6);
+	setParamAuxAttribute(controlID::eg1RepeatTime_mSec, auxAttribute);
+
+	// --- controlID::eg2RepeatTime_mSec
+	auxAttribute.reset(auxGUIIdentifier::GUIKnobGraphic);
+	auxAttribute.setUintAttribute(8);
+	setParamAuxAttribute(controlID::eg2RepeatTime_mSec, auxAttribute);
+
 
 	// **--0xEDA5--**
 
@@ -1015,6 +1039,8 @@ bool PluginCore::initPluginPresets()
 	setPresetParameter(preset->presetParameters, controlID::HPFenable, -0.000000);
 	setPresetParameter(preset->presetParameters, controlID::eg2DelayTime_mSec, 0.000000);
 	setPresetParameter(preset->presetParameters, controlID::eg1DelayTime_mSec, 0.000000);
+	setPresetParameter(preset->presetParameters, controlID::eg1RepeatTime_mSec, 0.000000);
+	setPresetParameter(preset->presetParameters, controlID::eg2RepeatTime_mSec, 0.000000);
 	addPreset(preset);
 
 
@@ -1116,6 +1142,7 @@ void PluginCore::updateEngine()
 	
 	// --- EG1
 
+	voiceModifiers->eg1Modifiers->repeatTime_mSec = eg1RepeatTime_mSec;
 	voiceModifiers->eg1Modifiers->delayTime_mSec = eg1DelayTime_mSec;
 	voiceModifiers->eg1Modifiers->attackTime_mSec = eg1AttackTime_mSec;
 	voiceModifiers->eg1Modifiers->decayTime_mSec = eg1DecayTime_mSec;
@@ -1132,7 +1159,8 @@ void PluginCore::updateEngine()
 	else // is poly or unison mode
 		voiceModifiers->eg1Modifiers->resetToZero = true;
 	voiceModifiers->eg1Modifiers->legatoMode = (legatoMode == 1);
-
+	
+	voiceModifiers->eg2Modifiers->repeatTime_mSec = eg2RepeatTime_mSec;
 	voiceModifiers->eg2Modifiers->delayTime_mSec = eg2DelayTime_mSec; 
 	voiceModifiers->eg2Modifiers->attackTime_mSec = eg2AttackTime_mSec;
 	voiceModifiers->eg2Modifiers->decayTime_mSec = eg2DecayTime_mSec;

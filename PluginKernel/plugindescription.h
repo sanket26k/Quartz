@@ -19,8 +19,8 @@
 // --- FOR AU PLUGINS ONLY ------------------------------------------------- //
 //     try to make this as unique as possible (Cocoa has a flat namespace)
 //     here I'm appending the VST3 FUID string (unique but must be generated for each plugin)
-#define AU_COCOA_VIEWFACTORY_NAME AUCocoaViewFactory_2BEC040612CC43E5B41DC8614485EF57
-#define AU_COCOA_VIEW_NAME AUCocoaView_2BEC040612CC43E5B41DC8614485EF57
+#define AU_COCOA_VIEWFACTORY_NAME AUCocoaViewFactory_B34142F90D054816853D4B8E445B1E4F
+#define AU_COCOA_VIEW_NAME AUCocoaView_B34142F90D054816853D4B8E445B1E4F
 
 // --- MacOS Bundle Identifiers
 //     NOTE: these ID strings must EXACTLY MATCH the PRODUCT_BUNDLE_IDENTIFIER setting in Build Settings for the Plugin Target
@@ -44,15 +44,15 @@ const char* kVendorURL = "";
 const char* kVendorEmail = "";
 
 // --- VST3 & AAX only
-const int32_t kFourCharCode = 'PTQS'; /// must be unique for each plugin in your company
+const int32_t kFourCharCode = 'QRTZ'; /// must be unique for each plugin in your company
 
 // --- VST3 specific, see www.willpirkle.com/forum/ for information on generating FUIDs
 //     use GUIDGEN.exe from compiler/tools (Win) or UUID Generator (free Mac App)
-const char* kVSTFUID = "{2BEC0406-12CC-43E5-B41D-C8614485EF57}"; /// NOTE: you need the enclosing { }
+const char* kVSTFUID = "{B34142F9-0D05-4816-853D-4B8E445B1E4F}"; /// NOTE: you need the enclosing { }
 
 // --- AAX specific
-const int32_t kAAXManufacturerID = 'VPTQ';
-const int32_t kAAXProductID = 'ptqs';
+const int32_t kAAXManufacturerID = 'PRSM';
+const int32_t kAAXProductID = 'qrtz';
 
 
 #endif

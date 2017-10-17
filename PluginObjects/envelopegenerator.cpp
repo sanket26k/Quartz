@@ -25,6 +25,7 @@ EnvelopeGenerator::EnvelopeGenerator(std::shared_ptr<EGModifiers> _modifiers, IM
 
 	// --- resetTimer
 	egTimer.resetTimer();
+	reTimer.resetTimer();
 }
 
 /** Destructor: delete output array and modulators */
@@ -58,6 +59,7 @@ bool EnvelopeGenerator::initializeComponent(InitializeInfo& info)
 	if (bNewSR)
 	{
 		// --- recalc these, SR dependent
+		calculateRepeatTime(repeatTime_mSec);
 		calculateDelayTime(delayTime_mSec);
 		calculateAttackTime(attackTime_mSec);
 		calculateDecayTime(decayTime_mSec);
@@ -86,6 +88,7 @@ bool EnvelopeGenerator::startComponent()
 	resetComponent();
 	state = egState::kDelay;
 	calculateDelayTime(delayTime_mSec);
+	calculateRepeatTime(repeatTime_mSec);
 
 	return true;
 }
@@ -140,6 +143,7 @@ bool EnvelopeGenerator::resetComponent()
 	// --- reset run/stop flag
 	noteOn = false;
 	egTimer.resetTimer();
+	reTimer.resetTimer();
 	return true; // handled
 }
 
@@ -225,6 +229,8 @@ bool EnvelopeGenerator::doNoteOff(double midiPitch, uint32_t midiNoteNumber, uin
 	else // sustain was already at zero
 		state = egState::kOff;
 
+	repeatOn = false;
+
 	return true; // handled
 
 }
@@ -246,6 +252,10 @@ bool EnvelopeGenerator::updateComponent()
 	sustainLevel = modifiers->sustainLevel;
 
 	// --- these are expensive functions, so only call when modified
+
+	if (variableChanged(repeatTime_mSec, modifiers->repeatTime_mSec))
+		calculateRepeatTime(modifiers->repeatTime_mSec);
+
 	if (variableChanged(delayTime_mSec, modifiers->delayTime_mSec))
 		calculateDelayTime(modifiers->delayTime_mSec);
 
@@ -307,7 +317,6 @@ bool EnvelopeGenerator::shutDownComponent()
 
 	// --- set state and reset counter
 	state = egState::kShutdown;
-
 	// --- for sustain pedal
 	sustainOverride = false;
 	releasePending = false;
@@ -315,6 +324,10 @@ bool EnvelopeGenerator::shutDownComponent()
 	return true; // handled
 }
 
+void EnvelopeGenerator::calculateRepeatTime(double repeatTime)
+{
+	reTimer.setTargetValueInSamples(sampleRate*repeatTime / 1000);
+}
 
 void EnvelopeGenerator::calculateDelayTime(double delayTime)
 {
@@ -396,6 +409,7 @@ bool EnvelopeGenerator::doEnvelopeGenerator()
 			{
 				envelopeOutput = 0.0;
 				egTimer.resetTimer();
+				reTimer.resetTimer();
 			}
 			break;
 		}
@@ -403,8 +417,11 @@ bool EnvelopeGenerator::doEnvelopeGenerator()
 		case egState::kDelay:
 		{
 			//
+			if (doRepeat()) break;
+
 			if (delayTime_mSec == 0 || egTimer.timerExpired())
 			{
+				
 				state = egState::kAttack;
 				egTimer.resetTimer();
 				break;
@@ -418,6 +435,8 @@ bool EnvelopeGenerator::doEnvelopeGenerator()
 		case egState::kAttack:
 		{
 			// --- render value
+
+			if (doRepeat()) break;
 			envelopeOutput = attackOffset + envelopeOutput*attackCoeff;
 
 			// --- check go to next state
@@ -432,6 +451,8 @@ bool EnvelopeGenerator::doEnvelopeGenerator()
 		case egState::kDecay:
 		{
 			// --- render value
+
+			if (doRepeat()) break;
 			envelopeOutput = decayOffset + envelopeOutput*decayCoeff;
 
 			// --- check go to next state
@@ -446,6 +467,8 @@ bool EnvelopeGenerator::doEnvelopeGenerator()
 		case egState::kSustain:
 		{
 			// --- render value
+			
+			if (doRepeat()) break;
 			envelopeOutput = sustainLevel;
 			break;
 		}
@@ -494,6 +517,17 @@ bool EnvelopeGenerator::doEnvelopeGenerator()
 			}
 			break;
 		}
+		case egState::kShutdownForRepeat:
+		{
+			envelopeOutput += incShutdown;
+
+			if (envelopeOutput <= 0)
+			{
+				envelopeOutput = 0.0;		// reset envelope
+				startComponent();
+				break;
+			}
+		}
 	}
 
 	outputs[kEGNormalOutput] = envelopeOutput;
@@ -530,5 +564,17 @@ void EnvelopeGenerator::setEGMode(egTCMode mode)
 	calculateDecayTime(decayTime_mSec);
 	calculateReleaseTime(releaseTime_mSec);
 }
-
-
+bool EnvelopeGenerator::doRepeat()
+{
+	if (/*repeatTime_mSec == 0 ||*/ reTimer.timerExpired())
+	{
+		shutDownComponent();
+		state = egState::kShutdownForRepeat;
+		return true;
+	}
+	else
+	{
+		reTimer.advanceTimer();
+		return false;
+	}
+}

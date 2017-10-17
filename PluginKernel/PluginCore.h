@@ -77,7 +77,9 @@ enum controlID {
 	LPFenable = 3081,
 	HPFenable = 3083,
 	eg2DelayTime_mSec = 102,
-	eg1DelayTime_mSec = 32
+	eg1DelayTime_mSec = 32,
+	eg1RepeatTime_mSec = 30,
+	eg2RepeatTime_mSec = 100
 };
 
 	// **--0x0F1F--**
@@ -193,6 +195,8 @@ private:
 	double filter2Q = 0.0;
 	double eg2DelayTime_mSec = 0.0;
 	double eg1DelayTime_mSec = 0.0;
+	double eg1RepeatTime_mSec = 0.0;
+	double eg2RepeatTime_mSec = 0.0;
 
 	// --- Discrete Plugin Variables 
 	int osc1Wave = 0;
