@@ -11,12 +11,16 @@ enum {	kEGNormalOutput,
 		kEGBiasedOutput, 
 		kNumEGOutputs }; // normal, biased, number of outputs (last)
 
-// --- there are no modulation inputs for this component, nor modulation channels
-const unsigned int kNumEGModulators = 0;
+// --- modulatior indexes for this component
+enum {
+	kEGRepeatTimeMod,
+	kEGRepeatTimeSDMod,
+	kNumEGModulators };
 
 // --- strongly typed enum for trivial oscillator type & mode
 enum class egTCMode { kAnalog, kDigital };
 enum class egState { kOff, kDelay, kAttack, kDecay, kSustain, kRelease, kShutdown, kShutdownForRepeat };
+enum class egSubDiv { kOff, kWhole, kDottedHalf, kHalf, kDottedQuarter, kQuarter, kDottedEigth, kTripletQuarter, kEigth, kTripletEigth, kSixteenth};
 
 /**
 	\struct EGModifiers
@@ -45,6 +49,12 @@ struct EGModifiers
 	bool velocityToAttackScaling = false;
 	bool noteNumberToDecayScaling = false;
 
+	// tempo info for repeat
+	bool subdivide = false;
+	double bpm = 120.0;
+	uint32_t sigDenominator = 4;
+	egSubDiv repeatSubDiv = egSubDiv::kWhole; 
+
 	//--- ADSR times from user
 	double repeatTime_mSec = 1000.0;
 	double delayTime_mSec = 1000.0;
@@ -54,7 +64,7 @@ struct EGModifiers
 	double sustainLevel = 1.0;
 
 	// --- modulator controls (none yet)
-	// ModulatorControl modulationControls[kNumEGModulators];
+	ModulatorControl modulationControls[kNumEGModulators];
 };
 
 
@@ -101,7 +111,7 @@ public:
 	virtual bool resetComponent();
 	virtual bool validateComponent();
 	virtual bool isComponentRunning() { return noteOn; }
-	// ModulatorControl* getModulatorControls(uint32_t modulatorIndex) { return &modifiers->modulationControls[modulatorIndex]; }
+	ModulatorControl* getModulatorControls(uint32_t modulatorIndex) { return &modifiers->modulationControls[modulatorIndex]; }
 
 	// --- note event handlers
 	virtual bool doNoteOn(double midiPitch, uint32_t midiNoteNumber, uint32_t midiNoteVelocity);
@@ -129,11 +139,12 @@ public:
 
 protected:
 	// --- calculate time params
+	void calculateRepeatTime(double repeatTime);
+	void calculateRepeatTimeFromSubDiv(egSubDiv subDiv);
+	void calculateDelayTime(double delayTime);
 	void calculateAttackTime(double attackTime, double attackTimeScalar = 1.0);
 	void calculateDecayTime(double decayTime, double decayTimeScalar = 1.0);
 	void calculateReleaseTime(double releaseTime, double releaseTimeScalar = 1.0);
-	void calculateDelayTime(double delayTime);
-	void calculateRepeatTime(double repeatTime);
 	
 	// --- generate it
 	bool doRepeat();
@@ -207,14 +218,26 @@ protected:
 
 	// --- RUN/STOP flag
 	bool noteOn = false;
-	bool repeatOn = true;
 
 	// --- Timer
 	Timer egTimer = Timer();
 	Timer reTimer = Timer();
 
+	// tempo information for repeat
+	bool subdivide = false;
+	double bpm = 120.0;
+	uint32_t sigDenominator = 4;
+	egSubDiv repeatSubDiv = egSubDiv::kWhole;
+
 	// --- our modifiers
 	std::shared_ptr<EGModifiers> modifiers = nullptr;
 
+	// Modulator Range
+	double maxRepeatTime = 5000.0;
+	double minRepeatTime = 0.0;
+	double maxRepeatTimeSD = 6000.0 / bpm * 16.0;
+	double minRepeatTimeSD = 6000.0 / bpm * 0.0625;
+	double repeatTimeModRange = ( maxRepeatTime - minRepeatTime ) / 4.0;	// +/- 25% bipolar range
+	double repeatTimeSDModRange = ( maxRepeatTimeSD - minRepeatTimeSD ) / 2.0;	// +/- 50% bipolar range
 };
 

@@ -79,7 +79,10 @@ enum controlID {
 	eg2DelayTime_mSec = 102,
 	eg1DelayTime_mSec = 32,
 	eg1RepeatTime_mSec = 30,
-	eg2RepeatTime_mSec = 100
+	eg2RepeatTime_mSec = 100,
+	eg1RepeatTime_SubDiv = 31,
+	eg2RepeatTime_SubDiv = 101,
+	subdivideTime = 3079
 };
 
 	// **--0x0F1F--**
@@ -254,13 +257,13 @@ private:
 	enum class modSource1Enum { None,LFO1_Out,LFO1_InvOut,LFO2_Out,LFO2_InvOut,EG1_Out,EG1_BiasOut,EG2_Out,EG2_BiasOut,Osc1_Out,Osc2_Out,SubOsc_Out };	// to compare: if(compareEnum(modSource1Enum::None, modSource1)) etc... 
 
 	int modDest1 = 0;
-	enum class modDest1Enum { None,Osc1_Pitch,Osc2_Pitch,All_Osc_Pitch,Osc1_PW,Osc2_PW,SubOsc_PW,All_Osc_PW,Filter1_fc,Filter1_Q,Filter2_fc,Filter2_Q,DCA_Amp,DCA_Pan,DelayFX_Mix,DelayFX_FB,Chorus_Depth };	// to compare: if(compareEnum(modDest1Enum::None, modDest1)) etc... 
+	enum class modDest1Enum { None,Osc1_Pitch,Osc2_Pitch,All_Osc_Pitch,Osc1_PW,Osc2_PW,SubOsc_PW,All_Osc_PW,Filter1_fc,Filter1_Q,Filter2_fc,Filter2_Q,EG1_Repeat_mSec,EG2_Repeat_mSec,EG1_Repeat_SubDiv,EG2_Repeat_SubDiv,DCA_Amp,DCA_Pan,DelayFX_Mix,DelayFX_FB,Chorus_Depth };	// to compare: if(compareEnum(modDest1Enum::None, modDest1)) etc... 
 
 	int modSource2 = 0;
 	enum class modSource2Enum { None,LFO1_Out,LFO1_InvOut,LFO2_Out,LFO2_InvOut,EG1_Out,EG1_BiasOut,EG2_Out,EG2_BiasOut,Osc1_Out,Osc2_Out,SubOsc_Out };	// to compare: if(compareEnum(modSource2Enum::None, modSource2)) etc... 
 
 	int modDest2 = 0;
-	enum class modDest2Enum { None,Osc1_Pitch,Osc2_Pitch,All_Osc_Pitch,Osc1_PW,Osc2_PW,SubOsc_PW,All_Osc_PW,Filter1_fc,Filter1_Q,DCA_Amp,DCA_Pan,DelayFX_Mix,DelayFX_FB,Chorus_Depth };	// to compare: if(compareEnum(modDest2Enum::None, modDest2)) etc... 
+	enum class modDest2Enum { None,Osc1_Pitch,Osc2_Pitch,All_Osc_Pitch,Osc1_PW,Osc2_PW,SubOsc_PW,All_Osc_PW,Filter1_fc,Filter1_Q,Filter2_fc,Filter2_Q,EG1_Repeat_mSec,EG2_Repeat_mSec,EG1_Repeat_SubDiv,EG2_Repeat_SubDiv,DCA_Amp,DCA_Pan,DelayFX_Mix,DelayFX_FB,Chorus_Depth };	// to compare: if(compareEnum(modDest2Enum::None, modDest2)) etc... 
 
 	int delayType = 0;
 	enum class delayTypeEnum { normal,cross,pingpong };	// to compare: if(compareEnum(delayTypeEnum::normal, delayType)) etc... 
@@ -279,6 +282,15 @@ private:
 
 	int HPFenable = 0;
 	enum class HPFenableEnum { SWITCH_OFF,SWITCH_ON };	// to compare: if(compareEnum(HPFenableEnum::SWITCH_OFF, HPFenable)) etc... 
+
+	int eg1RepeatTime_SubDiv = 0;
+	enum class eg1RepeatTime_SubDivEnum { Off,Whole,Dotted_Half,Half,Dotted_Quarter,Quarter,Dotted_Eigth,Triplet_Quarter,Eigth,Triplet_Eigth,Sixteenth };	// to compare: if(compareEnum(eg1RepeatTime_SubDivEnum::Off, eg1RepeatTime_SubDiv)) etc... 
+
+	int eg2RepeatTime_SubDiv = 0;
+	enum class eg2RepeatTime_SubDivEnum { Off,Whole,Dotted_Half,Half,Dotted_Quarter,Quarter,Dotted_Eigth,Triplet_Quarter,Eigth,Triplet_Eigth,Sixteenth };	// to compare: if(compareEnum(eg2RepeatTime_SubDivEnum::Off, eg2RepeatTime_SubDiv)) etc... 
+
+	int subdivideTime = 0;
+	enum class subdivideTimeEnum { SWITCH_OFF,SWITCH_ON };	// to compare: if(compareEnum(subdivideTimeEnum::SWITCH_OFF, subdivideTime)) etc... 
 
 	// **--0x1A7F--**
     // --- end member variables

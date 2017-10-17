@@ -17,6 +17,16 @@ EnvelopeGenerator::EnvelopeGenerator(std::shared_ptr<EGModifiers> _modifiers, IM
 	// --- set our type id
 	componentType = componentType::kEG;
 
+	// --- create modulators
+	// --- calculate the range of time modulation - based on the entire range of repeat times
+	//
+	//     the /2.0 is because we have bipolar modulation, so this is really
+	//     a modulation range of +/- repeat time in mSec
+	//kRepeatTimeModRange = (kMaxLFO_fo - kMinLFO_fo) / 2.0;		// --> +/- 50%
+
+	modulators[kEGRepeatTimeMod] = new Modulator(kDefaultOutputValueOFF, repeatTimeModRange, modTransform::kNoTransform);
+	modulators[kEGRepeatTimeSDMod] = new Modulator(kDefaultOutputValueOFF, repeatTimeSDModRange, modTransform::kNoTransform);
+
 	// --- validate all pointers
 	validComponent = validateComponent();
 
@@ -229,8 +239,6 @@ bool EnvelopeGenerator::doNoteOff(double midiPitch, uint32_t midiNoteNumber, uin
 	else // sustain was already at zero
 		state = egState::kOff;
 
-	repeatOn = false;
-
 	return true; // handled
 
 }
@@ -250,11 +258,15 @@ bool EnvelopeGenerator::updateComponent()
 		sustainUpdate = true;
 
 	sustainLevel = modifiers->sustainLevel;
+	subdivide = modifiers->subdivide;
 
 	// --- these are expensive functions, so only call when modified
 
-	if (variableChanged(repeatTime_mSec, modifiers->repeatTime_mSec))
+	if (!subdivide && variableChanged(repeatTime_mSec, modifiers->repeatTime_mSec))
 		calculateRepeatTime(modifiers->repeatTime_mSec);
+
+	if (subdivide && variableChanged(repeatSubDiv, modifiers->repeatSubDiv))
+		calculateRepeatTimeFromSubDiv(modifiers->repeatSubDiv);
 
 	if (variableChanged(delayTime_mSec, modifiers->delayTime_mSec))
 		calculateDelayTime(modifiers->delayTime_mSec);
@@ -291,6 +303,65 @@ bool EnvelopeGenerator::renderComponent(bool update)
 	// --- check valid flag
 	if (!validComponent) return false;
 
+	// --- run the modulators
+	bool didModulate = runModuators(update);
+	//if( !didModulate )
+	//	return false;
+
+	// do the modulation???
+	//boundValue( repeatTime_mSec, minRepeatTime, maxRepeatTime );
+	//filter_Q = modifiers->qControl + modulators[kVALadderFilterQMod]->getModulatedValue();
+	double modValue;
+	
+	if( subdivide )
+	{
+		modValue = modulators[kEGRepeatTimeSDMod]->getModulatedValue();
+
+		if( modValue != 0.0 )
+			int a = 0;
+
+		calculateRepeatTimeFromSubDiv(modifiers->repeatSubDiv);
+		
+		if( repeatTime_mSec != 0.0 )
+		{
+			calculateRepeatTime( repeatTime_mSec + modValue );
+			boundValue( repeatTime_mSec, minRepeatTimeSD, maxRepeatTimeSD );
+		}
+		else repeatTime_mSec = 0.0;
+	}
+	else
+	{
+		modValue = modulators[kEGRepeatTimeMod]->getModulatedValue();
+
+		if( modValue != 0.0 )
+			int a = 0;
+
+		if( repeatTime_mSec != 0.0 )
+		{
+			calculateRepeatTime( repeatTime_mSec + modValue );
+			boundValue( repeatTime_mSec, minRepeatTime, maxRepeatTime );
+		}
+		else repeatTime_mSec = 0.0;
+	}
+
+	/*
+	if( !subdivide )
+		modValue = modulators[kEGRepeatTimeMod]->getModulatedValue(); 
+	else modValue = modulators[kEGRepeatTimeSDMod]->getModulatedValue(); 
+	
+	if( modValue != 0.0 )
+		int a = 0;
+
+	//repeatTime_mSec += modulators[kEGRepeatMod]->getModulatedValue();
+	if( subdivide ) calculateRepeatTimeFromSubDiv(modifiers->repeatSubDiv);
+	else calculateRepeatTime(modifiers->repeatTime_mSec);
+	repeatTime_mSec += modValue;
+	calculateRepeatTime( repeatTime_mSec );
+	
+	if( !subdivide ) boundValue( repeatTime_mSec, minRepeatTime, maxRepeatTime );
+	else  boundValue( repeatTime_mSec, minRepeatTimeSD, maxRepeatTimeSD );
+	*/
+
 	// --- check update
 	if (update)
 		updateComponent();
@@ -324,15 +395,74 @@ bool EnvelopeGenerator::shutDownComponent()
 	return true; // handled
 }
 
+/**
+\brief Calculate the repeat time in mSec based on the subdivision given on the GUI, the tempo, and the time signature
+
+\param subDiv: the selected subdivision on the GUI
+*/
+void EnvelopeGenerator::calculateRepeatTimeFromSubDiv(egSubDiv subDiv)
+{
+	repeatSubDiv = subDiv;
+
+	double beatLength = 60000.0 / bpm;
+	double noteMultiplier = 0.0;
+
+	if( subDiv == egSubDiv::kOff )
+	{
+		repeatTime_mSec = 0.0;
+		reTimer.setTargetValueInSamples( 0 );
+		return;
+	}
+	else if( subDiv == egSubDiv::kWhole )
+		noteMultiplier = 4.0;
+	else if( subDiv == egSubDiv::kDottedHalf )
+		noteMultiplier = 3.0;
+	else if( subDiv == egSubDiv::kHalf )
+		noteMultiplier = 2.0;
+	else if( subDiv == egSubDiv::kDottedQuarter )
+		noteMultiplier = 1.5;
+	else if( subDiv == egSubDiv::kQuarter )
+		noteMultiplier = 1.0;
+	else if( subDiv == egSubDiv::kDottedEigth )
+		noteMultiplier = 0.75;
+	else if( subDiv == egSubDiv::kTripletQuarter )
+		noteMultiplier = 0.66;
+	else if( subDiv == egSubDiv::kEigth )
+		noteMultiplier = 0.5;
+	else if( subDiv == egSubDiv::kTripletEigth )
+		noteMultiplier = 0.33;
+	else if( subDiv == egSubDiv::kSixteenth )
+		noteMultiplier = 0.25;
+
+	repeatTime_mSec = beatLength * noteMultiplier;
+
+	reTimer.setTargetValueInSamples(sampleRate*repeatTime_mSec / 1000);
+}
+
+/**
+\brief Save the repeat time in mSec and update the repeat timer
+
+\param delayTime: the delay time in mSec
+*/
 void EnvelopeGenerator::calculateRepeatTime(double repeatTime)
 {
+	repeatTime_mSec = repeatTime;
+
 	reTimer.setTargetValueInSamples(sampleRate*repeatTime / 1000);
 }
 
+/**
+\brief Save the delay time in mSec and update the delay timer
+
+\param delayTime: the delay time in mSec
+*/
 void EnvelopeGenerator::calculateDelayTime(double delayTime)
 {
+	delayTime_mSec = delayTime;
+
 	egTimer.setTargetValueInSamples(sampleRate*delayTime / 1000);
 }
+
 /**
 	\brief Calculate the attack time variables including the coefficient and offsets
 
@@ -391,6 +521,28 @@ void EnvelopeGenerator::calculateReleaseTime(double releaseTime, double releaseT
 }
 
 /**
+\brief Decides if repeat should occur, and if not, increments repeat timer
+\return true if handled, false if not handled
+*/
+bool EnvelopeGenerator::doRepeat()
+{
+	if( repeatTime_mSec == 0.0 )
+		return false;
+
+	if( reTimer.timerExpired() )
+	{
+		shutDownComponent();
+		state = egState::kShutdownForRepeat;
+		return true;
+	}
+	else
+	{
+		reTimer.advanceTimer();
+		return false;
+	}
+}
+
+/**
 	\brief Run the EG through one cycle of the finite state machine.
 	\return true if handled, false if not handled
 */
@@ -413,30 +565,25 @@ bool EnvelopeGenerator::doEnvelopeGenerator()
 			}
 			break;
 		}
-
 		case egState::kDelay:
 		{
-			//
 			if (doRepeat()) break;
 
 			if (delayTime_mSec == 0 || egTimer.timerExpired())
 			{
-				
 				state = egState::kAttack;
 				egTimer.resetTimer();
 				break;
 			}
 			else egTimer.advanceTimer();
+
 			break;
-			
 		}
-
-
 		case egState::kAttack:
 		{
 			// --- render value
-
 			if (doRepeat()) break;
+
 			envelopeOutput = attackOffset + envelopeOutput*attackCoeff;
 
 			// --- check go to next state
@@ -451,8 +598,8 @@ bool EnvelopeGenerator::doEnvelopeGenerator()
 		case egState::kDecay:
 		{
 			// --- render value
-
 			if (doRepeat()) break;
+
 			envelopeOutput = decayOffset + envelopeOutput*decayCoeff;
 
 			// --- check go to next state
@@ -467,9 +614,10 @@ bool EnvelopeGenerator::doEnvelopeGenerator()
 		case egState::kSustain:
 		{
 			// --- render value
-			
 			if (doRepeat()) break;
+
 			envelopeOutput = sustainLevel;
+
 			break;
 		}
 		case egState::kRelease:
@@ -563,18 +711,4 @@ void EnvelopeGenerator::setEGMode(egTCMode mode)
 	calculateAttackTime(attackTime_mSec);
 	calculateDecayTime(decayTime_mSec);
 	calculateReleaseTime(releaseTime_mSec);
-}
-bool EnvelopeGenerator::doRepeat()
-{
-	if (/*repeatTime_mSec == 0 ||*/ reTimer.timerExpired())
-	{
-		shutDownComponent();
-		state = egState::kShutdownForRepeat;
-		return true;
-	}
-	else
-	{
-		reTimer.advanceTimer();
-		return false;
-	}
 }

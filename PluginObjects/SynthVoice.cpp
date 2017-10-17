@@ -91,6 +91,11 @@ SynthVoice::SynthVoice(std::shared_ptr<SynthVoiceModifiers> _modifiers, IMIDIDat
 	registerModDestinationComponent(modulationDestination::kFilter2_fc, filter2);		//MODIFY FOR LPF AND HPF
 	registerModDestinationComponent(modulationDestination::kFilter2_Q, filter2);
 
+	registerModDestinationComponent(modulationDestination::kEG1_Repeat_SubDiv, outputEG);
+	registerModDestinationComponent(modulationDestination::kEG2_Repeat_SubDiv, eg2);
+	registerModDestinationComponent(modulationDestination::kEG1_Repeat_mSec, outputEG);
+	registerModDestinationComponent(modulationDestination::kEG2_Repeat_mSec, eg2);
+
 	registerModDestinationComponent(modulationDestination::kDCA_Amp, outputDCA);
 	registerModDestinationComponent(modulationDestination::kDCA_Pan, outputDCA);
 	
@@ -118,7 +123,13 @@ SynthVoice::SynthVoice(std::shared_ptr<SynthVoiceModifiers> _modifiers, IMIDIDat
 	registerModulatorArrayIndex(modulationSource::kNoneDontCare, modulationDestination::kFilter1_Q, kVALadderFilterQMod);
 	registerModulatorArrayIndex(modulationSource::kNoneDontCare, modulationDestination::kFilter2_fc, kVALadderFilterFcMod);
 	registerModulatorArrayIndex(modulationSource::kNoneDontCare, modulationDestination::kFilter2_Q, kVALadderFilterQMod);
-	
+
+	// --- EGS
+	registerModulatorArrayIndex(modulationSource::kNoneDontCare, modulationDestination::kEG1_Repeat_mSec, kEGRepeatTimeMod);
+	registerModulatorArrayIndex(modulationSource::kNoneDontCare, modulationDestination::kEG2_Repeat_mSec, kEGRepeatTimeMod);
+	registerModulatorArrayIndex(modulationSource::kNoneDontCare, modulationDestination::kEG1_Repeat_SubDiv, kEGRepeatTimeSDMod);
+	registerModulatorArrayIndex(modulationSource::kNoneDontCare, modulationDestination::kEG2_Repeat_SubDiv, kEGRepeatTimeSDMod);
+
 	// --- DCA AMP and PAN MOD
 	registerModulatorArrayIndex(modulationSource::kNoneDontCare, modulationDestination::kDCA_Amp, kDCA_MaxDownAmpMod);
 	registerModulatorArrayIndex(modulationSource::kNoneDontCare, modulationDestination::kDCA_Pan, kDCA_PanMod);

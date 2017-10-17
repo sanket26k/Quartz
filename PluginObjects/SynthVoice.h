@@ -70,6 +70,7 @@ const unsigned int kNumVoiceModulators = 0;
 
 	EG:
 	- currently none (however does support MIDI modulation with key and note to attack/decay)
+	- Repeat time in mSec after being set by subdivision
 
 	OSCILLATOR:
 	- pitch modulation
@@ -131,6 +132,10 @@ enum class modulationDestination {
 	kFilter1_Q,
 	kFilter2_fc, 
 	kFilter2_Q,
+	kEG1_Repeat_mSec,
+	kEG2_Repeat_mSec,
+	kEG1_Repeat_SubDiv,
+	kEG2_Repeat_SubDiv,
 	kDCA_Amp, 
 	kDCA_Pan, 
 	kDelayFX_Mix, 

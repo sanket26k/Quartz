@@ -376,7 +376,7 @@ bool PluginCore::initPluginParameters()
 	addPluginParameter(piParam);
 
 	// --- discrete control: Mod Dest 1
-	piParam = new PluginParameter(controlID::modDest1, "Mod Dest 1", "None,Osc1 Pitch,Osc2 Pitch,All Osc Pitch,Osc1 PW,Osc2 PW,SubOsc PW,All Osc PW,Filter1 fc,Filter1 Q,Filter2 fc,Filter2 Q,DCA Amp,DCA Pan,DelayFX Mix,DelayFX FB,Chorus Depth", "None");
+	piParam = new PluginParameter(controlID::modDest1, "Mod Dest 1", "None,Osc1 Pitch,Osc2 Pitch,All Osc Pitch,Osc1 PW,Osc2 PW,SubOsc PW,All Osc PW,Filter1 fc,Filter1 Q,Filter2 fc,Filter2 Q,EG1 Repeat mSec,EG2 Repeat mSec,EG1 Repeat SubDiv,EG2 Repeat SubDiv,DCA Amp,DCA Pan,DelayFX Mix,DelayFX FB,Chorus Depth", "None");
 	piParam->setBoundVariable(&modDest1, boundVariableType::kInt);
 	addPluginParameter(piParam);
 
@@ -393,7 +393,7 @@ bool PluginCore::initPluginParameters()
 	addPluginParameter(piParam);
 
 	// --- discrete control: Mod Dest 2
-	piParam = new PluginParameter(controlID::modDest2, "Mod Dest 2", "None,Osc1 Pitch,Osc2 Pitch,All Osc Pitch,Osc1 PW,Osc2 PW,SubOsc PW,All Osc PW,Filter1 fc,Filter1 Q,DCA Amp,DCA Pan,DelayFX Mix,DelayFX FB,Chorus Depth", "None");
+	piParam = new PluginParameter(controlID::modDest2, "Mod Dest 2", "None,Osc1 Pitch,Osc2 Pitch,All Osc Pitch,Osc1 PW,Osc2 PW,SubOsc PW,All Osc PW,Filter1 fc,Filter1 Q,Filter2 fc,Filter2 Q,EG1 Repeat,EG2 Repeat,DCA Amp,DCA Pan,DelayFX Mix,DelayFX FB,Chorus Depth", "None");
 	piParam->setBoundVariable(&modDest2, boundVariableType::kInt);
 	addPluginParameter(piParam);
 
@@ -518,17 +518,33 @@ bool PluginCore::initPluginParameters()
 	addPluginParameter(piParam);
 
 	// --- continuous control: EG1 Repeat
-	piParam = new PluginParameter(controlID::eg1RepeatTime_mSec, "EG1 Repeat", "mSec", controlVariableType::kDouble, 0.000000, 2000.000000, 0.000000, taper::kLinearTaper);
+	piParam = new PluginParameter(controlID::eg1RepeatTime_mSec, "EG1 Repeat", "mSec", controlVariableType::kDouble, 0.000000, 5000.000000, 500.000000, taper::kLinearTaper);
 	piParam->setParameterSmoothing(true);
 	piParam->setSmoothingTimeMsec(100.00);
 	piParam->setBoundVariable(&eg1RepeatTime_mSec, boundVariableType::kDouble);
 	addPluginParameter(piParam);
 
 	// --- continuous control: EG2 Repeat
-	piParam = new PluginParameter(controlID::eg2RepeatTime_mSec, "EG2 Repeat", "mSec", controlVariableType::kDouble, 0.000000, 2000.000000, 0.000000, taper::kLinearTaper);
+	piParam = new PluginParameter(controlID::eg2RepeatTime_mSec, "EG2 Repeat", "mSec", controlVariableType::kDouble, 0.000000, 5000.000000, 500.000000, taper::kLinearTaper);
 	piParam->setParameterSmoothing(true);
 	piParam->setSmoothingTimeMsec(100.00);
 	piParam->setBoundVariable(&eg2RepeatTime_mSec, boundVariableType::kDouble);
+	addPluginParameter(piParam);
+
+	// --- discrete control: EG1 Repeat SubDiv
+	piParam = new PluginParameter(controlID::eg1RepeatTime_SubDiv, "EG1 Repeat SubDiv", "Off,Whole,Dotted Half,Half,Dotted Quarter,Quarter,Dotted Eigth,Triplet Quarter,Eigth,Triplet Eigth,Sixteenth", "Off");
+	piParam->setBoundVariable(&eg1RepeatTime_SubDiv, boundVariableType::kInt);
+	addPluginParameter(piParam);
+
+	// --- discrete control: EG2 Repeat SubDiv
+	piParam = new PluginParameter(controlID::eg2RepeatTime_SubDiv, "EG2 Repeat SubDiv", "Off,Whole,Dotted Half,Half,Dotted Quarter,Quarter,Dotted Eigth,Triplet Quarter,Eigth,Triplet Eigth,Sixteenth", "Off");
+	piParam->setBoundVariable(&eg2RepeatTime_SubDiv, boundVariableType::kInt);
+	addPluginParameter(piParam);
+
+	// --- discrete control: Subdivide
+	piParam = new PluginParameter(controlID::subdivideTime, "Subdivide", "SWITCH OFF,SWITCH ON", "SWITCH_OFF");
+	piParam->setBoundVariable(&subdivideTime, boundVariableType::kInt);
+	piParam->setIsDiscreteSwitch(true);
 	addPluginParameter(piParam);
 
 	// --- BONUS Parameters
@@ -948,6 +964,21 @@ bool PluginCore::initPluginParameters()
 	auxAttribute.setUintAttribute(8);
 	setParamAuxAttribute(controlID::eg2RepeatTime_mSec, auxAttribute);
 
+	// --- controlID::eg1RepeatTime_SubDiv
+	auxAttribute.reset(auxGUIIdentifier::GUIKnobGraphic);
+	auxAttribute.setUintAttribute(6);
+	setParamAuxAttribute(controlID::eg1RepeatTime_SubDiv, auxAttribute);
+
+	// --- controlID::eg2RepeatTime_SubDiv
+	auxAttribute.reset(auxGUIIdentifier::GUIKnobGraphic);
+	auxAttribute.setUintAttribute(8);
+	setParamAuxAttribute(controlID::eg2RepeatTime_SubDiv, auxAttribute);
+
+	// --- controlID::subdivideTime
+	auxAttribute.reset(auxGUIIdentifier::GUI2SSButtonStyle);
+	auxAttribute.setUintAttribute(0);
+	setParamAuxAttribute(controlID::subdivideTime, auxAttribute);
+
 
 	// **--0xEDA5--**
 
@@ -1039,8 +1070,11 @@ bool PluginCore::initPluginPresets()
 	setPresetParameter(preset->presetParameters, controlID::HPFenable, -0.000000);
 	setPresetParameter(preset->presetParameters, controlID::eg2DelayTime_mSec, 0.000000);
 	setPresetParameter(preset->presetParameters, controlID::eg1DelayTime_mSec, 0.000000);
-	setPresetParameter(preset->presetParameters, controlID::eg1RepeatTime_mSec, 0.000000);
-	setPresetParameter(preset->presetParameters, controlID::eg2RepeatTime_mSec, 0.000000);
+	setPresetParameter(preset->presetParameters, controlID::eg1RepeatTime_mSec, 500.000000);
+	setPresetParameter(preset->presetParameters, controlID::eg2RepeatTime_mSec, 500.000000);
+	setPresetParameter(preset->presetParameters, controlID::eg1RepeatTime_SubDiv, -0.000000);
+	setPresetParameter(preset->presetParameters, controlID::eg2RepeatTime_SubDiv, -0.000000);
+	setPresetParameter(preset->presetParameters, controlID::subdivideTime, -0.000000);
 	addPreset(preset);
 
 
@@ -1141,14 +1175,19 @@ void PluginCore::updateEngine()
 	voiceModifiers->lfo2Modifiers->oscMode = convertEnum(lfo2Mode, LFOMode);
 	
 	// --- EG1
-
 	voiceModifiers->eg1Modifiers->repeatTime_mSec = eg1RepeatTime_mSec;
 	voiceModifiers->eg1Modifiers->delayTime_mSec = eg1DelayTime_mSec;
 	voiceModifiers->eg1Modifiers->attackTime_mSec = eg1AttackTime_mSec;
 	voiceModifiers->eg1Modifiers->decayTime_mSec = eg1DecayTime_mSec;
 	voiceModifiers->eg1Modifiers->sustainLevel = eg1SustainLevel;
 	voiceModifiers->eg1Modifiers->releaseTime_mSec = eg1ReleaseTime_mSec;
-	
+
+	// tempo stuff HARDCODED
+	voiceModifiers->eg1Modifiers->subdivide = (subdivideTime == 1);
+	voiceModifiers->eg1Modifiers->bpm = 120.0;
+	voiceModifiers->eg1Modifiers->sigDenominator = 4;
+	voiceModifiers->eg1Modifiers->repeatSubDiv = convertEnum(eg1RepeatTime_SubDiv, egSubDiv);
+
 	// --- since EG1 hardwired to output DCA; these scaling values will be applied
 	voiceModifiers->eg1Modifiers->velocityToAttackScaling = (velocityToAttack == 1);
 	voiceModifiers->eg1Modifiers->noteNumberToDecayScaling = (noteToDecay == 1);
@@ -1160,12 +1199,19 @@ void PluginCore::updateEngine()
 		voiceModifiers->eg1Modifiers->resetToZero = true;
 	voiceModifiers->eg1Modifiers->legatoMode = (legatoMode == 1);
 	
+	// --- EG2
 	voiceModifiers->eg2Modifiers->repeatTime_mSec = eg2RepeatTime_mSec;
 	voiceModifiers->eg2Modifiers->delayTime_mSec = eg2DelayTime_mSec; 
 	voiceModifiers->eg2Modifiers->attackTime_mSec = eg2AttackTime_mSec;
 	voiceModifiers->eg2Modifiers->decayTime_mSec = eg2DecayTime_mSec;
 	voiceModifiers->eg2Modifiers->sustainLevel = eg2SustainLevel;
 	voiceModifiers->eg2Modifiers->releaseTime_mSec = eg2ReleaseTime_mSec;
+
+	// tempo stuff HARDCODED
+	voiceModifiers->eg2Modifiers->subdivide = (subdivideTime == 1);
+	voiceModifiers->eg2Modifiers->bpm = 120.0;
+	voiceModifiers->eg2Modifiers->sigDenominator = 4;
+	voiceModifiers->eg2Modifiers->repeatSubDiv = convertEnum(eg2RepeatTime_SubDiv, egSubDiv);
 
 	// --- LPF
 	voiceModifiers->filter1Modifiers->fcControl = filter1Fc;
